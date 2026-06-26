@@ -52,8 +52,12 @@ $router->get( '/empresa/licencas/{id}',                        'Empresa/Licencas
 $router->post('/empresa/licencas/{id}/transferir',             'Empresa/LicencasController',  'solicitarTransferencia');
 
 // API REST (app Android)
-$router->post('/api/licenca/validar',               'Api/LicencaController', 'validar');
-$router->post('/api/webhook/mercadopago',           'Api/LicencaController', 'webhookMercadoPago');
+$router->post('/api/licenca/validar',               'Api/LicencaController',      'validar');
+$router->post('/api/webhook/mercadopago',           'Api/LicencaController',      'webhookMercadoPago');
+$router->post('/api/dispositivo/ping',              'Api/DispositivoController',  'ping');
+
+// Admin — Dispositivos
+$router->get( '/admin/dispositivos',                'Admin/DispositivosController', 'index');
 
 // Redirecionar raiz para login
 $router->get('/', 'AuthController', 'login');
