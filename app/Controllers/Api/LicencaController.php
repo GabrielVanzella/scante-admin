@@ -67,11 +67,20 @@ class LicencaController extends Controller {
         $dias      = (int)($response['metadata']['dias'] ?? 30);
 
         if ($licencaId) {
-            $model = new Licenca();
-            $model->estender((int)$licencaId, $dias);
+            $model   = new Licenca();
+            $licenca = $model->findById((int)$licencaId);
+
+            if ($licenca && $licenca['status'] === 'pendente') {
+                // Licença criada pelo checkout: ativa pelo tipo
+                $model->ativarAposPagamento((int)$licencaId, $tipo, $payId);
+            } else {
+                // Licença existente: apenas estende
+                $model->estender((int)$licencaId, $dias);
+            }
+
             // Registra pagamento
             $this->db()->execute(
-                "INSERT INTO pagamentos (licenca_id, payment_id, valor, tipo, criado_em) VALUES (?,?,?,?,NOW())",
+                "INSERT INTO pagamentos (licenca_id, payment_id, valor, tipo, status, criado_em) VALUES (?,?,?,?,'approved',NOW())",
                 [$licencaId, $payId, $response['transaction_amount'], $tipo]
             );
         }

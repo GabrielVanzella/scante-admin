@@ -37,9 +37,9 @@ CREATE TABLE usuarios (
 CREATE TABLE licencas (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   chave         VARCHAR(24) NOT NULL UNIQUE,      -- SCTE-XXXXXX-XXXXXX-XXXXXX
-  empresa_id    INT UNSIGNED NOT NULL,
+  empresa_id    INT UNSIGNED NULL,
   tipo          ENUM('trial','mensal','anual','vitalicia') NOT NULL DEFAULT 'trial',
-  status        ENUM('trial','ativa','expirada','revogada') NOT NULL DEFAULT 'trial',
+  status        ENUM('trial','ativa','expirada','revogada','pendente') NOT NULL DEFAULT 'trial',
   device_id     VARCHAR(100) NULL,
   device_nome   VARCHAR(200) NULL,
   vinculada_em  DATETIME NULL,

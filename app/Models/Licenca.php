@@ -6,6 +6,31 @@ use App\Core\Model;
 class Licenca extends Model {
     protected string $table = 'licencas';
 
+    public function criarPendente(?int $empresaId, string $tipo, string $deviceId, string $deviceNome, string $email, string $telefone): int {
+        $chave = $this->gerarChave();
+        $this->db->execute(
+            "INSERT INTO licencas (chave, empresa_id, tipo, status, device_id, device_nome, criada_em)
+             VALUES (?, ?, ?, 'pendente', ?, ?, NOW())",
+            [$chave, $empresaId, $tipo, $deviceId ?: null, $deviceNome ?: null]
+        );
+        return (int)$this->db->lastInsertId();
+    }
+
+    public function ativarAposPagamento(int $id, string $tipo, string $paymentId): void {
+        $dias = match($tipo) {
+            'mensal'    => 30,
+            'anual'     => 365,
+            'vitalicia' => null,
+            default     => 30,
+        };
+        $expira = $dias ? date('Y-m-d H:i:s', strtotime("+{$dias} days")) : null;
+
+        $this->db->execute(
+            "UPDATE licencas SET status='ativa', expira_em=?, payment_id=? WHERE id=?",
+            [$expira, $paymentId, $id]
+        );
+    }
+
     public function gerar(int $empresaId, string $tipo = 'trial', int $dias = 30): int {
         $chave = $this->gerarChave();
         $expira = $tipo === 'vitalicia' ? null : date('Y-m-d H:i:s', strtotime("+{$dias} days"));

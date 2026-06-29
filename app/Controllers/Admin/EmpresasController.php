@@ -92,6 +92,25 @@ class EmpresasController extends Controller {
         ], 'admin');
     }
 
+    public function gerarLicencas(string $id): void {
+        Auth::requireAdmin();
+        $empresa = (new Empresa())->findById((int)$id);
+        if (!$empresa) { $this->redirect('/admin/empresas'); }
+
+        if ($this->isPost()) {
+            $tipo      = $this->input('tipo', 'trial');
+            $quantidade = min((int)$this->input('quantidade', 1), 50);
+            $dias      = (int)$this->input('dias', 30);
+
+            $model = new Licenca();
+            for ($i = 0; $i < $quantidade; $i++) {
+                $model->gerar((int)$id, $tipo, $dias);
+            }
+            $this->flash('success', "$quantidade licença(s) gerada(s) para {$empresa['nome']}.");
+        }
+        $this->redirect('/admin/empresas/' . $id);
+    }
+
     public function excluir(string $id): void {
         Auth::requireAdmin();
         (new Empresa())->delete((int)$id);

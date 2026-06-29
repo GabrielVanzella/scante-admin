@@ -60,12 +60,44 @@
   </div>
 </div>
 
+<!-- Link de pagamento para o cliente -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 class="fw-bold mb-0"><i class="bi bi-link-45deg me-2"></i>Link de pagamento</h6>
+      <span class="badge bg-success">Enviar ao cliente</span>
+    </div>
+    <p class="text-muted small mb-3">
+      Envie este link para o cliente comprar ou renovar uma licença. O formulário já vem pré-preenchido com os dados da empresa.
+    </p>
+    <?php
+      $linkPagamento = APP_URL . '/checkout?empresa_id=' . $empresa['id']
+        . '&email=' . urlencode($empresa['email']);
+    ?>
+    <div class="input-group mb-2">
+      <input type="text" id="inputLinkPagamento" class="form-control form-control-sm font-monospace"
+             value="<?= htmlspecialchars($linkPagamento) ?>" readonly>
+      <button class="btn btn-sm btn-outline-secondary" onclick="copiarLink()" title="Copiar">
+        <i class="bi bi-clipboard" id="iconeCopiar"></i>
+      </button>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="https://wa.me/?text=<?= urlencode('Olá! Segue o link para ativar sua licença ScanTE: ' . $linkPagamento) ?>"
+         target="_blank" class="btn btn-sm btn-success">
+        <i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp
+      </a>
+      <a href="<?= htmlspecialchars($linkPagamento) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Abrir link
+      </a>
+    </div>
+  </div>
+</div>
+
 <!-- Licenças da empresa -->
 <div class="card">
   <div class="card-body">
     <div class="d-flex align-items-center justify-content-between mb-3">
       <h6 class="fw-bold mb-0"><i class="bi bi-key me-2"></i>Licenças</h6>
-      <!-- Modal para gerar -->
       <button class="btn btn-sm btn-accent" data-bs-toggle="modal" data-bs-target="#modalGerar">
         <i class="bi bi-plus-lg me-1"></i>Gerar Licença
       </button>
@@ -100,17 +132,16 @@
 <div class="modal fade" id="modalGerar" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form method="POST" action="<?= APP_URL ?>/admin/licencas/gerar">
-        <input type="hidden" name="empresa_id" value="<?= $empresa['id'] ?>">
+      <form method="POST" action="<?= APP_URL ?>/admin/empresas/<?= $empresa['id'] ?>/gerar-licencas">
         <div class="modal-header">
-          <h5 class="modal-title">Gerar Licença</h5>
+          <h5 class="modal-title">Gerar Licenças — <?= htmlspecialchars($empresa['nome']) ?></h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">Tipo</label>
-              <select name="tipo" class="form-select">
+              <select name="tipo" id="tipoLicenca" class="form-select">
                 <option value="trial">Trial</option>
                 <option value="mensal">Mensal</option>
                 <option value="anual">Anual</option>
@@ -121,8 +152,8 @@
               <label class="form-label">Quantidade</label>
               <input type="number" name="quantidade" class="form-control" value="1" min="1" max="50">
             </div>
-            <div class="col-12">
-              <label class="form-label">Dias de validade <small class="text-muted">(ignore para vitalícia)</small></label>
+            <div id="wrapperDias" class="col-12">
+              <label class="form-label">Dias de validade</label>
               <input type="number" name="dias" class="form-control" value="30" min="1">
             </div>
           </div>
@@ -135,3 +166,18 @@
     </div>
   </div>
 </div>
+
+<script>
+document.getElementById('tipoLicenca').addEventListener('change', function () {
+  document.getElementById('wrapperDias').style.display = this.value === 'vitalicia' ? 'none' : '';
+});
+
+function copiarLink() {
+  const input = document.getElementById('inputLinkPagamento');
+  navigator.clipboard.writeText(input.value).then(() => {
+    const icon = document.getElementById('iconeCopiar');
+    icon.className = 'bi bi-check-lg text-success';
+    setTimeout(() => icon.className = 'bi bi-clipboard', 2000);
+  });
+}
+</script>

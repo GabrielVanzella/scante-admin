@@ -26,6 +26,14 @@ $router->get('/login',  'AuthController', 'login');
 $router->post('/login', 'AuthController', 'login');
 $router->get('/logout', 'AuthController', 'logout');
 
+// Checkout público (sem autenticação)
+$router->get( '/checkout',           'CheckoutController', 'index');
+$router->post('/checkout',           'CheckoutController', 'processar');
+$router->get( '/checkout/pagamento',  'CheckoutController', 'pagamento');
+$router->post('/checkout/pagar',      'CheckoutController', 'pagar');
+$router->get( '/checkout/sucesso',    'CheckoutController', 'sucesso');
+$router->get( '/checkout/cancelado',  'CheckoutController', 'cancelado');
+
 // Admin
 $router->get( '/admin',                             'Admin/DashboardController', 'index');
 $router->get( '/admin/empresas',                    'Admin/EmpresasController',  'index');
@@ -35,7 +43,11 @@ $router->get( '/admin/empresas/{id}',               'Admin/EmpresasController', 
 $router->get( '/admin/empresas/{id}/editar',        'Admin/EmpresasController',  'editar');
 $router->post('/admin/empresas/{id}/editar',        'Admin/EmpresasController',  'editar');
 $router->get( '/admin/empresas/{id}/excluir',       'Admin/EmpresasController',  'excluir');
+$router->post('/admin/empresas/{id}/gerar-licencas','Admin/EmpresasController',  'gerarLicencas');
 $router->get( '/admin/manual',                      'Admin/ManualController',    'index');
+$router->get( '/admin/pagamentos',                  'Admin/PagamentosController', 'index');
+$router->post('/admin/pagamentos/registrar',        'Admin/PagamentosController', 'registrar');
+$router->get( '/admin/pagamentos/{id}/excluir',     'Admin/PagamentosController', 'excluir');
 $router->get( '/admin/licencas',                    'Admin/LicencasController',  'index');
 $router->post('/admin/licencas/gerar',              'Admin/LicencasController',  'gerar');
 $router->get( '/admin/licencas/{id}',               'Admin/LicencasController',  'ver');
