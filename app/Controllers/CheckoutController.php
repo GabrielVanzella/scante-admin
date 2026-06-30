@@ -4,6 +4,9 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Models\Licenca;
 use App\Models\Empresa;
+use App\Models\Configuracao;
+use App\Services\PagarmeService;
+use App\Services\MercadoPagoService;
 
 class CheckoutController extends Controller {
 
@@ -19,11 +22,9 @@ class CheckoutController extends Controller {
         'vitalicia' => 'Vitalícia',
     ];
 
-    private array $dias = [
-        'mensal'    => 30,
-        'anual'     => 365,
-        'vitalicia' => null,
-    ];
+    // ----------------------------------------------------------------
+    // Formulário de dados
+    // ----------------------------------------------------------------
 
     public function index(): void {
         $deviceId   = trim($_GET['device_id']   ?? '');
@@ -31,18 +32,20 @@ class CheckoutController extends Controller {
         $empresaId  = (int)($_GET['empresa_id'] ?? 0) ?: null;
         $email      = trim($_GET['email'] ?? '');
 
-        $empresas = (new Empresa())->findAll('nome ASC');
-
         $this->view('checkout.index', [
             'deviceId'        => $deviceId,
             'deviceNome'      => $deviceNome,
             'empresaId'       => $empresaId,
-            'empresas'        => $empresas,
+            'empresas'        => (new Empresa())->findAll('nome ASC'),
             'dados'           => ['email' => $email],
             'erro'            => null,
             'novaEmpresaNome' => null,
         ], 'checkout');
     }
+
+    // ----------------------------------------------------------------
+    // Processa formulário → cria licença pendente → redireciona
+    // ----------------------------------------------------------------
 
     public function processar(): void {
         $deviceId   = trim($this->input('device_id', ''));
@@ -83,17 +86,22 @@ class CheckoutController extends Controller {
             ]);
         }
 
-        $licencaId = (new Licenca())->criarPendente($empresaId, $tipo, $deviceId, $deviceNome, $email, $telefone);
-        $token     = $this->gerarToken($licencaId);
+        $licencaId = (new Licenca())->criarPendente(
+            $empresaId, $tipo, $deviceId, $deviceNome, $email, $telefone
+        );
 
-        $this->redirectTo(APP_URL . '/checkout/pagamento?id=' . $licencaId . '&h=' . $token);
+        $this->redirectTo(APP_URL . '/checkout/pagamento?id=' . $licencaId . '&h=' . $this->token($licencaId));
     }
+
+    // ----------------------------------------------------------------
+    // Página de pagamento
+    // ----------------------------------------------------------------
 
     public function pagamento(): void {
         $licencaId = (int)($_GET['id'] ?? 0);
         $token     = $_GET['h'] ?? '';
 
-        if (!$licencaId || !hash_equals($this->gerarToken($licencaId), $token)) {
+        if (!$licencaId || !hash_equals($this->token($licencaId), $token)) {
             $this->redirectTo(APP_URL . '/checkout');
             return;
         }
@@ -104,28 +112,58 @@ class CheckoutController extends Controller {
             return;
         }
 
-        $tipo   = $licenca['tipo'];
-        $valor  = $this->precos[$tipo]  ?? PRECO_MENSAL;
-        $label  = $this->labels[$tipo]  ?? ucfirst($tipo);
-        $diasV  = $this->dias[$tipo];
+        $tipo    = $licenca['tipo'];
+        $valor   = $this->precos[$tipo]  ?? PRECO_MENSAL;
+        $label   = $this->labels[$tipo]  ?? ucfirst($tipo);
+        $gateway = Configuracao::gatewayAtivo();
+        $cfg     = new Configuracao();
+
+        $pixData = null;
+        $erroGw  = isset($_GET['erro']);
+
+        if ($gateway === 'pagarme' && !$erroGw) {
+            $sk = $cfg->get('pagarme_secret_key');
+            if ($sk) {
+                try {
+                    $svc     = new PagarmeService($sk);
+                    $pixData = $svc->criarOrdemPix(
+                        $licencaId, $valor,
+                        'ScanTE — Licença ' . $label,
+                        $licenca['email'] ?? 'cliente@scante.com',
+                        $licenca['device_nome'] ?: 'Cliente ScanTE',
+                        3600
+                    );
+                } catch (\Throwable $e) {
+                    $erroGw = true;
+                    error_log('[Pagar.me] ' . $e->getMessage());
+                }
+            }
+        }
 
         $this->view('checkout.pagamento', [
-            'licenca'    => $licenca,
-            'licencaId'  => $licencaId,
-            'token'      => $token,
-            'tipo'       => $tipo,
-            'label'      => $label,
-            'valor'      => $valor,
-            'dias'       => $diasV,
-            'mpToken'    => MP_ACCESS_TOKEN,
+            'licenca'     => $licenca,
+            'licencaId'   => $licencaId,
+            'token'       => $token,
+            'tipo'        => $tipo,
+            'label'       => $label,
+            'valor'       => $valor,
+            'dias'        => ['mensal' => 30, 'anual' => 365, 'vitalicia' => null][$tipo] ?? null,
+            'gateway'     => $gateway,
+            'pixData'     => $pixData,
+            'erroGw'      => $erroGw,
+            'mpPublicKey' => $cfg->get('mp_public_key'),
         ], 'checkout');
     }
+
+    // ----------------------------------------------------------------
+    // POST /checkout/pagar — dev e mercadopago
+    // ----------------------------------------------------------------
 
     public function pagar(): void {
         $licencaId = (int)$this->input('licenca_id');
         $token     = $this->input('token', '');
 
-        if (!$licencaId || !hash_equals($this->gerarToken($licencaId), $token)) {
+        if (!$licencaId || !hash_equals($this->token($licencaId), $token)) {
             $this->redirectTo(APP_URL . '/checkout');
             return;
         }
@@ -136,78 +174,139 @@ class CheckoutController extends Controller {
             return;
         }
 
-        $tipo  = $licenca['tipo'];
-        $valor = $this->precos[$tipo] ?? PRECO_MENSAL;
-        $model = new Licenca();
+        $tipo    = $licenca['tipo'];
+        $valor   = $this->precos[$tipo] ?? PRECO_MENSAL;
+        $gateway = Configuracao::gatewayAtivo();
+        $cfg     = new Configuracao();
 
-        if (!MP_ACCESS_TOKEN) {
-            // Modo desenvolvimento: ativa direto
-            $model->ativarAposPagamento($licencaId, $tipo, 'DEV-' . $licencaId);
-            $this->redirectTo(APP_URL . '/checkout/sucesso');
+        if ($gateway === 'mercadopago') {
+            $accessToken = $cfg->get('mp_access_token');
+            if (!$accessToken) {
+                $this->redirectTo(APP_URL . '/checkout/pagamento?id=' . $licencaId . '&h=' . $token . '&erro=1');
+                return;
+            }
+            try {
+                $url = (new MercadoPagoService($accessToken))->criarPreferencia(
+                    $licencaId, $tipo, $valor,
+                    $licenca['email'] ?? 'cliente@scante.com',
+                    $licenca['device_nome'] ?? 'ScanTE',
+                    APP_URL
+                );
+                $this->redirectTo($url);
+            } catch (\Throwable $e) {
+                error_log('[MercadoPago] ' . $e->getMessage());
+                $this->redirectTo(APP_URL . '/checkout/pagamento?id=' . $licencaId . '&h=' . $token . '&erro=1');
+            }
             return;
         }
 
-        // Cria preferência no Mercado Pago e redireciona
-        $url = $this->criarPreferenciaMp(
-            $licencaId, $tipo, $valor,
-            $licenca['device_nome'] ?? 'ScanTE'
-        );
-
-        if ($url) {
-            $this->redirectTo($url);
-        } else {
-            $this->redirectTo(APP_URL . '/checkout/pagamento?id=' . $licencaId . '&h=' . $token . '&erro=1');
+        // Pagar.me: pagamento vem via webhook, não por aqui
+        if ($gateway === 'pagarme') {
+            $this->redirectTo(APP_URL . '/checkout/pagamento?id=' . $licencaId . '&h=' . $token);
+            return;
         }
+
+        // Modo dev: ativa direto
+        (new Licenca())->ativarAposPagamento($licencaId, $tipo, 'DEV-' . $licencaId);
+        $this->redirectTo(APP_URL . '/checkout/sucesso');
     }
 
-    public function sucesso(): void {
-        $this->view('checkout.sucesso', [], 'checkout');
-    }
+    // ----------------------------------------------------------------
+    // POST /checkout/processar-pagamento — Checkout Transparente (Bricks)
+    // ----------------------------------------------------------------
 
-    public function cancelado(): void {
-        $this->view('checkout.cancelado', [], 'checkout');
-    }
+    public function processarPagamento(): void {
+        header('Content-Type: application/json');
 
-    private function gerarToken(int $licencaId): string {
-        return substr(hash_hmac('sha256', (string)$licencaId, API_SECRET), 0, 20);
-    }
+        $body      = json_decode(file_get_contents('php://input'), true) ?? [];
+        $licencaId = (int)($body['licenca_id'] ?? 0);
+        $token     = $body['checkout_token'] ?? '';
 
-    private function criarPreferenciaMp(int $licencaId, string $tipo, float $valor, string $deviceNome): ?string {
+        if (!$licencaId || !hash_equals($this->token($licencaId), $token)) {
+            echo json_encode(['status' => 'erro', 'mensagem' => 'Token inválido.']);
+            exit;
+        }
+
         $licenca = (new Licenca())->findById($licencaId);
-        $email   = $licenca['email'] ?? 'comprador@email.com';
+        if (!$licenca) {
+            echo json_encode(['status' => 'erro', 'mensagem' => 'Licença não encontrada.']);
+            exit;
+        }
+        if ($licenca['status'] === 'ativa') {
+            echo json_encode(['status' => 'approved']);
+            exit;
+        }
 
-        $body = [
-            'items' => [[
-                'title'       => 'ScanTE — Licença ' . ucfirst($tipo),
-                'quantity'    => 1,
-                'unit_price'  => $valor,
-                'currency_id' => 'BRL',
-            ]],
-            'payer'              => ['email' => $email],
-            'external_reference' => (string)$licencaId,
-            'metadata'           => ['tipo' => $tipo, 'device_nome' => $deviceNome],
-            'back_urls'          => [
-                'success' => APP_URL . '/checkout/sucesso',
-                'failure' => APP_URL . '/checkout/cancelado',
-                'pending' => APP_URL . '/checkout/sucesso',
-            ],
-            'auto_return'      => 'approved',
-            'notification_url' => APP_URL . '/api/webhook/mercadopago',
-        ];
+        $cfg         = new Configuracao();
+        $accessToken = $cfg->get('mp_access_token');
+        if (!$accessToken) {
+            echo json_encode(['status' => 'erro', 'mensagem' => 'Gateway não configurado.']);
+            exit;
+        }
 
-        $ch = curl_init('https://api.mercadopago.com/checkout/preferences');
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode($body),
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . MP_ACCESS_TOKEN,
-            ],
-        ]);
-        $resp = json_decode(curl_exec($ch), true);
-        curl_close($ch);
+        $tipo  = $licenca['tipo'];
+        $valor = $this->precos[$tipo] ?? PRECO_MENSAL;
 
-        return $resp['init_point'] ?? null;
+        // Remove internal fields before forwarding to MP API
+        $formData = $body;
+        unset($formData['licenca_id'], $formData['checkout_token']);
+
+        try {
+            $resultado = (new MercadoPagoService($accessToken))->processarPagamento(
+                $licencaId, $tipo, $valor,
+                $licenca['email'] ?? '',
+                $formData,
+                APP_URL
+            );
+
+            // Pix pendente: não ativa ainda, devolve QR code para polling
+            if ($resultado['status'] === 'pending' && !empty($resultado['qr_code'])) {
+                echo json_encode($resultado); // contém qr_code, qr_code_base64
+                exit;
+            }
+
+            // Aprovado (cartão/débito): ativa imediatamente
+            if ($resultado['status'] === 'approved') {
+                (new Licenca())->ativarAposPagamento($licencaId, $tipo, $resultado['id']);
+            }
+
+            echo json_encode($resultado);
+        } catch (\Throwable $e) {
+            error_log('[MP Bricks] ' . $e->getMessage());
+            echo json_encode(['status' => 'erro', 'mensagem' => 'Erro ao processar pagamento.']);
+        }
+        exit;
+    }
+
+    // ----------------------------------------------------------------
+    // Polling JS — GET /checkout/status?id=X&h=Y
+    // ----------------------------------------------------------------
+
+    public function status(): void {
+        header('Content-Type: application/json');
+        $licencaId = (int)($_GET['id'] ?? 0);
+        $token     = $_GET['h'] ?? '';
+
+        if (!$licencaId || !hash_equals($this->token($licencaId), $token)) {
+            echo json_encode(['status' => 'invalido']);
+            exit;
+        }
+
+        $licenca = (new Licenca())->findById($licencaId);
+        echo json_encode(['status' => $licenca['status'] ?? 'erro']);
+        exit;
+    }
+
+    // ----------------------------------------------------------------
+    // Páginas de resultado
+    // ----------------------------------------------------------------
+
+    public function sucesso(): void   { $this->view('checkout.sucesso',   [], 'checkout'); }
+    public function cancelado(): void { $this->view('checkout.cancelado', [], 'checkout'); }
+
+    // ----------------------------------------------------------------
+
+    private function token(int $licencaId): string {
+        return substr(hash_hmac('sha256', (string)$licencaId, API_SECRET), 0, 20);
     }
 }

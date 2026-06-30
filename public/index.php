@@ -30,7 +30,9 @@ $router->get('/logout', 'AuthController', 'logout');
 $router->get( '/checkout',           'CheckoutController', 'index');
 $router->post('/checkout',           'CheckoutController', 'processar');
 $router->get( '/checkout/pagamento',  'CheckoutController', 'pagamento');
-$router->post('/checkout/pagar',      'CheckoutController', 'pagar');
+$router->post('/checkout/pagar',               'CheckoutController', 'pagar');
+$router->post('/checkout/processar-pagamento', 'CheckoutController', 'processarPagamento');
+$router->get( '/checkout/status',     'CheckoutController', 'status');
 $router->get( '/checkout/sucesso',    'CheckoutController', 'sucesso');
 $router->get( '/checkout/cancelado',  'CheckoutController', 'cancelado');
 
@@ -44,7 +46,10 @@ $router->get( '/admin/empresas/{id}/editar',        'Admin/EmpresasController', 
 $router->post('/admin/empresas/{id}/editar',        'Admin/EmpresasController',  'editar');
 $router->get( '/admin/empresas/{id}/excluir',       'Admin/EmpresasController',  'excluir');
 $router->post('/admin/empresas/{id}/gerar-licencas','Admin/EmpresasController',  'gerarLicencas');
-$router->get( '/admin/manual',                      'Admin/ManualController',    'index');
+$router->get( '/admin/manual',                      'Admin/ManualController',       'index');
+$router->get( '/admin/configuracoes',               'Admin/ConfiguracoesController', 'index');
+$router->post('/admin/configuracoes/salvar',         'Admin/ConfiguracoesController', 'salvar');
+$router->post('/admin/configuracoes/limpar-chave',   'Admin/ConfiguracoesController', 'limparChave');
 $router->get( '/admin/pagamentos',                  'Admin/PagamentosController', 'index');
 $router->post('/admin/pagamentos/registrar',        'Admin/PagamentosController', 'registrar');
 $router->get( '/admin/pagamentos/{id}/excluir',     'Admin/PagamentosController', 'excluir');
@@ -65,7 +70,8 @@ $router->post('/empresa/licencas/{id}/transferir',             'Empresa/Licencas
 
 // API REST (app Android)
 $router->post('/api/licenca/validar',               'Api/LicencaController',      'validar');
-$router->post('/api/webhook/mercadopago',           'Api/LicencaController',      'webhookMercadoPago');
+$router->post('/api/webhook/mercadopago',           'Api/LicencaController',         'webhookMercadoPago');
+$router->post('/api/webhook/pagarme',              'Api/PagarmeWebhookController',  'handle');
 $router->post('/api/dispositivo/ping',              'Api/DispositivoController',  'ping');
 
 // Admin — Dispositivos

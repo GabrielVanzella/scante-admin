@@ -46,6 +46,9 @@
     <div class="nav-section">Financeiro</div>
     <a href="<?= APP_URL ?>/admin/pagamentos" class="nav-link"><i class="bi bi-cash-stack"></i> Pagamentos</a>
 
+    <div class="nav-section">Configurações</div>
+    <a href="<?= APP_URL ?>/admin/configuracoes" class="nav-link"><i class="bi bi-sliders"></i> Gateways de Pagamento</a>
+
     <div class="nav-section">Suporte</div>
     <a href="<?= APP_URL ?>/admin/manual" class="nav-link" target="_blank"><i class="bi bi-file-earmark-pdf"></i> Manual do App</a>
 

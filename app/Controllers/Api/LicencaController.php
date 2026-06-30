@@ -3,6 +3,7 @@ namespace App\Controllers\Api;
 
 use App\Core\Controller;
 use App\Models\Licenca;
+use App\Models\Configuracao;
 
 class LicencaController extends Controller {
 
@@ -33,29 +34,32 @@ class LicencaController extends Controller {
 
     /** POST /api/webhook/mercadopago — chamado pelo Mercado Pago após pagamento */
     public function webhookMercadoPago(): void {
-        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $body  = json_decode(file_get_contents('php://input'), true) ?? [];
+        $cfg   = new Configuracao();
+        $token = $cfg->get('mp_access_token');
 
-        // Valida assinatura do webhook (se configurado)
-        if (MP_WEBHOOK_SECRET) {
-            $signature = $_SERVER['HTTP_X_SIGNATURE'] ?? '';
-            // Implementar validação HMAC conforme documentação do Mercado Pago
+        if (!$token) {
+            $this->json(['ok' => true, 'aviso' => 'MP não configurado']);
+            return;
         }
 
         $tipo  = $body['type'] ?? '';
         $payId = $body['data']['id'] ?? null;
 
         if ($tipo !== 'payment' || !$payId) {
-            $this->json(['ok' => true]); // Ignora notificações que não são de pagamento
+            $this->json(['ok' => true]);
+            return;
         }
 
         // Consulta o pagamento na API do Mercado Pago
         $ch = curl_init("https://api.mercadopago.com/v1/payments/$payId");
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . MP_ACCESS_TOKEN],
+            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token],
+            CURLOPT_TIMEOUT        => 10,
         ]);
         $response = json_decode(curl_exec($ch), true);
-        curl_close($ch);
+        unset($ch);
 
         if (($response['status'] ?? '') !== 'approved') {
             $this->json(['ok' => true]);
