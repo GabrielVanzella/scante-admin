@@ -1,15 +1,20 @@
 -- ============================================================
--- ScanTE Admin — Banco de dados
--- Execute: mysql -u root -p scante_admin < database.sql
+-- ScanTE Admin — Banco de dados (Hostinger / produção)
+-- ============================================================
+-- COMO IMPORTAR:
+--   1. Acesse o phpMyAdmin no hPanel da Hostinger
+--   2. No menu da esquerda, clique no banco  u508103998_scante
+--   3. Vá na aba "Importar" (Import)
+--   4. Selecione este arquivo e clique em "Executar"
+--
+-- Este arquivo NÃO cria o banco (ele já existe) nem usa "USE".
+-- As tabelas são criadas dentro do banco que você selecionar.
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS scante_admin
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE scante_admin;
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- Empresas clientes
-CREATE TABLE empresas (
+CREATE TABLE IF NOT EXISTS empresas (
   id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nome       VARCHAR(200) NOT NULL,
   cnpj       VARCHAR(20),
@@ -18,10 +23,10 @@ CREATE TABLE empresas (
   contato    VARCHAR(150),
   ativo      TINYINT(1) NOT NULL DEFAULT 1,
   criada_em  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Usuários (admin + usuários das empresas)
-CREATE TABLE usuarios (
+CREATE TABLE IF NOT EXISTS usuarios (
   id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nome       VARCHAR(150) NOT NULL,
   email      VARCHAR(150) NOT NULL UNIQUE,
@@ -31,10 +36,10 @@ CREATE TABLE usuarios (
   ativo      TINYINT(1) NOT NULL DEFAULT 1,
   criado_em  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Licenças
-CREATE TABLE licencas (
+CREATE TABLE IF NOT EXISTS licencas (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   chave         VARCHAR(24) NOT NULL UNIQUE,      -- SCTE-XXXXXX-XXXXXX-XXXXXX
   empresa_id    INT UNSIGNED NULL,
@@ -52,10 +57,10 @@ CREATE TABLE licencas (
   INDEX idx_device (device_id),
   INDEX idx_status (status),
   INDEX idx_expira (expira_em)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Histórico de dispositivos (vincular / transferência)
-CREATE TABLE historico_dispositivos (
+CREATE TABLE IF NOT EXISTS historico_dispositivos (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   licenca_id  INT UNSIGNED NOT NULL,
   device_id   VARCHAR(100) NOT NULL,
@@ -66,10 +71,10 @@ CREATE TABLE historico_dispositivos (
   criado_em   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (licenca_id) REFERENCES licencas(id) ON DELETE CASCADE,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Pagamentos
-CREATE TABLE pagamentos (
+CREATE TABLE IF NOT EXISTS pagamentos (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   licenca_id  INT UNSIGNED NOT NULL,
   payment_id  VARCHAR(100) NOT NULL,
@@ -78,18 +83,18 @@ CREATE TABLE pagamentos (
   status      VARCHAR(50) DEFAULT 'approved',
   criado_em   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (licenca_id) REFERENCES licencas(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Configurações (gateway de pagamento, chaves)
-CREATE TABLE configuracoes (
+-- Configurações (gateway de pagamento, chaves) — usado por App\Models\Configuracao
+CREATE TABLE IF NOT EXISTS configuracoes (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   chave         VARCHAR(100) NOT NULL UNIQUE,
   valor         TEXT NULL,
   atualizado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Dispositivos (ping do app Android)
-CREATE TABLE dispositivos (
+-- Dispositivos (ping do app Android) — usado por App\Models\Dispositivo
+CREATE TABLE IF NOT EXISTS dispositivos (
   id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   device_id       VARCHAR(100) NOT NULL UNIQUE,
   device_nome     VARCHAR(200) NULL,
@@ -103,11 +108,17 @@ CREATE TABLE dispositivos (
   ultimo_acesso   DATETIME NULL,
   INDEX idx_status_licenca (status_licenca),
   INDEX idx_ultimo_acesso (ultimo_acesso)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Gateway padrão em modo de desenvolvimento (sem cobrança real)
+INSERT INTO configuracoes (chave, valor) VALUES ('gateway_ativo', 'dev')
+ON DUPLICATE KEY UPDATE valor = valor;
 
 -- ============================================================
 -- Usuário admin padrão
--- Senha: admin123 (ALTERE após o primeiro login!)
+-- Senha: admin123  (ALTERE após o primeiro login!)
 -- ============================================================
 INSERT INTO usuarios (nome, email, senha, tipo)
 VALUES (

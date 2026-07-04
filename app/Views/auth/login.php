@@ -5,7 +5,7 @@
   <div class="alert alert-danger py-2"><?= $erro ?></div>
   <?php endif; ?>
 
-  <form method="POST" action="/login">
+  <form method="POST" action="<?= APP_URL ?>/login">
     <div class="mb-3">
       <label class="form-label">E-mail</label>
       <input type="email" name="email" class="form-control" required autofocus>
