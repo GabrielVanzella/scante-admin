@@ -3,6 +3,13 @@
   <span class="text-muted small">Atualizado em <?= date('H:i:s') ?> — <a href="" class="text-muted">Atualizar</a></span>
 </div>
 
+<?php if (!empty($flash)): ?>
+  <div class="alert alert-<?= htmlspecialchars($flash['type']) ?> alert-dismissible fade show" role="alert">
+    <?= htmlspecialchars($flash['message']) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+  </div>
+<?php endif; ?>
+
 <!-- Cards de estatísticas -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
@@ -89,6 +96,7 @@
             <th>Primeiro acesso</th>
             <th>Último acesso</th>
             <th>Versão</th>
+            <th class="text-end">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -144,6 +152,27 @@
               <?php endif; ?>
             </td>
             <td><small class="text-muted"><?= htmlspecialchars($d['app_version'] ?? '—') ?></small></td>
+            <td class="text-end text-nowrap">
+              <button type="button" class="btn btn-sm btn-outline-primary btn-atribuir-empresa"
+                      title="Atribuir empresa"
+                      data-device="<?= htmlspecialchars($d['device_id']) ?>"
+                      data-nome="<?= htmlspecialchars($d['device_nome'] ?? $d['device_id']) ?>">
+                <i class="bi bi-building"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-success btn-atribuir-licenca"
+                      title="Atribuir licença"
+                      data-device="<?= htmlspecialchars($d['device_id']) ?>"
+                      data-nome="<?= htmlspecialchars($d['device_nome'] ?? $d['device_id']) ?>">
+                <i class="bi bi-key"></i>
+              </button>
+              <form method="POST" action="<?= APP_URL ?>/admin/dispositivos/excluir" class="d-inline"
+                    onsubmit="return confirm('Remover este dispositivo da lista? (não afeta a licença)');">
+                <input type="hidden" name="device_id" value="<?= htmlspecialchars($d['device_id']) ?>">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir dispositivo">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </td>
           </tr>
         <?php endforeach; ?>
         </tbody>
@@ -158,6 +187,70 @@
     <div id="semResultados" class="text-center text-muted py-4 d-none">
       Nenhum dispositivo encontrado com os filtros selecionados.
     </div>
+  </div>
+</div>
+
+<!-- Modal: Atribuir empresa -->
+<div class="modal fade" id="modalEmpresa" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="POST" action="<?= APP_URL ?>/admin/dispositivos/atribuir-empresa">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-building me-2"></i>Atribuir empresa</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Dispositivo: <strong id="empDeviceNome"></strong></p>
+        <input type="hidden" name="device_id" id="empDeviceId">
+        <label class="form-label">Empresa</label>
+        <select name="empresa_id" class="form-select" required>
+          <option value="">Selecione...</option>
+          <?php foreach ($empresas as $e): ?>
+            <option value="<?= $e['id'] ?>"><?= htmlspecialchars($e['nome']) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <?php if (empty($empresas)): ?>
+          <p class="text-muted small mt-2 mb-0">Nenhuma empresa cadastrada. Crie uma em <a href="<?= APP_URL ?>/admin/empresas">Empresas</a>.</p>
+        <?php endif; ?>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-accent">Atribuir</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Atribuir licença -->
+<div class="modal fade" id="modalLicenca" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="POST" action="<?= APP_URL ?>/admin/dispositivos/atribuir-licenca">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-key me-2"></i>Atribuir licença</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Dispositivo: <strong id="licDeviceNome"></strong></p>
+        <input type="hidden" name="device_id" id="licDeviceId">
+        <label class="form-label">Licença disponível</label>
+        <select name="licenca_id" class="form-select" required>
+          <option value="">Selecione...</option>
+          <?php foreach ($licencasDisponiveis as $l): ?>
+            <option value="<?= $l['id'] ?>">
+              <?= htmlspecialchars($l['chave'] . ' — ' . ($l['empresa_nome'] ?? 'sem empresa') . ' (' . $l['tipo'] . '/' . $l['status'] . ')') ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+        <?php if (empty($licencasDisponiveis)): ?>
+          <p class="text-muted small mt-2 mb-0">Nenhuma licença disponível (ativa/trial e sem dispositivo). Gere uma em <a href="<?= APP_URL ?>/admin/licencas">Licenças</a>.</p>
+        <?php else: ?>
+          <p class="text-muted small mt-2 mb-0">A empresa do dispositivo será ajustada conforme a licença escolhida.</p>
+        <?php endif; ?>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-accent">Atribuir</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -199,5 +292,25 @@
   });
 
   filtrar();
+})();
+
+// Abre os modais preenchendo o dispositivo selecionado.
+// bootstrap.Modal é acessado só no clique (o bundle carrega depois deste script).
+(function () {
+  document.querySelectorAll('.btn-atribuir-empresa').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('empDeviceId').value = btn.dataset.device;
+      document.getElementById('empDeviceNome').textContent = btn.dataset.nome;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEmpresa')).show();
+    });
+  });
+
+  document.querySelectorAll('.btn-atribuir-licenca').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('licDeviceId').value = btn.dataset.device;
+      document.getElementById('licDeviceNome').textContent = btn.dataset.nome;
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('modalLicenca')).show();
+    });
+  });
 })();
 </script>

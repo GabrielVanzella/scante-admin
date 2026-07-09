@@ -6,28 +6,94 @@ use App\Core\Model;
 class Licenca extends Model {
     protected string $table = 'licencas';
 
-    public function criarPendente(?int $empresaId, string $tipo, string $deviceId, string $deviceNome, string $email, string $telefone): int {
+    /**
+     * Cria a licença "mestre" de um pedido em lote (checkout de empresa):
+     * quantidade de licenças × anos de suporte. As licenças adicionais
+     * (quando quantidade > 1) só são geradas em aprovar(), depois que o
+     * admin aprovar a compra (ver registrarPagamento() e aprovar()).
+     */
+    public function criarPendenteLote(?int $empresaId, int $quantidade, int $anosSuporte, string $email, string $telefone): int {
         $chave = $this->gerarChave();
         $this->db->execute(
-            "INSERT INTO licencas (chave, empresa_id, tipo, status, device_id, device_nome, criada_em)
-             VALUES (?, ?, ?, 'pendente', ?, ?, NOW())",
-            [$chave, $empresaId, $tipo, $deviceId ?: null, $deviceNome ?: null]
+            "INSERT INTO licencas (chave, empresa_id, tipo, quantidade, anos_suporte, status, email, telefone, criada_em)
+             VALUES (?, ?, 'anual', ?, ?, 'pendente', ?, ?, NOW())",
+            [$chave, $empresaId, $quantidade, $anosSuporte, $email ?: null, $telefone ?: null]
         );
         return (int)$this->db->lastInsertId();
     }
 
-    public function ativarAposPagamento(int $id, string $tipo, string $paymentId): void {
-        $dias = match($tipo) {
-            'mensal'    => 30,
-            'anual'     => 365,
-            'vitalicia' => null,
-            default     => 30,
-        };
+    /**
+     * Chamado quando o pagamento é confirmado (dev, Bricks, webhook MP/Pagar.me).
+     * NÃO ativa a licença — só registra o payment_id e avisa a equipe por
+     * e-mail. As chaves só passam a valer quando o admin aprovar (ver aprovar()).
+     * Idempotente: se o pagamento já tinha sido registrado, não reenvia o aviso
+     * (importante porque webhooks podem chamar isso mais de uma vez).
+     */
+    public function registrarPagamento(int $id, string $paymentId): void {
+        $licenca = $this->findByIdComEmpresa($id);
+        if (!$licenca || $licenca['payment_id']) return;
+
+        $this->db->execute("UPDATE licencas SET payment_id=? WHERE id=?", [$paymentId, $id]);
+
+        $emailNotificacao = (new Configuracao())->get('email_notificacoes', 'scante@scante.com.br');
+        if ($emailNotificacao) {
+            \App\Services\Mailer::notificarNovaCompra($emailNotificacao, [
+                'licencaId'   => $id,
+                'quantidade'  => max(1, (int)$licenca['quantidade']),
+                'anosSuporte' => (int)$licenca['anos_suporte'],
+                'empresaNome' => $licenca['empresa_nome'] ?? '—',
+                'email'       => $licenca['email'] ?: '—',
+                'telefone'    => $licenca['telefone'] ?: '—',
+                'linkAdmin'   => APP_URL . '/admin/licencas/' . $id,
+            ]);
+        }
+    }
+
+    /**
+     * Aprovação manual pelo admin: só aqui as chaves passam a valer de fato.
+     * Ativa a licença mestre e, se quantidade > 1, gera as demais licenças do
+     * mesmo pedido (todas com o mesmo payment_id, recuperáveis juntas via
+     * findAllByPaymentId()). Se aprovado sem pagamento online registrado
+     * (ex: negociação manual/boleto fora do sistema), usa um marcador.
+     */
+    public function aprovar(int $id): void {
+        $licenca = $this->findById($id);
+        if (!$licenca || $licenca['status'] !== 'pendente') return;
+
+        $anosSuporte = (int)($licenca['anos_suporte'] ?? 0);
+        $quantidade  = max(1, (int)($licenca['quantidade'] ?? 1));
+        $paymentId   = $licenca['payment_id'] ?: ('APROVADO-MANUAL-' . $id);
+
+        $dias = $anosSuporte > 0
+            ? $anosSuporte * 365
+            : match($licenca['tipo']) {
+                'mensal'    => 30,
+                'anual'     => 365,
+                'vitalicia' => null,
+                default     => 30,
+            };
         $expira = $dias ? date('Y-m-d H:i:s', strtotime("+{$dias} days")) : null;
 
         $this->db->execute(
             "UPDATE licencas SET status='ativa', expira_em=?, payment_id=? WHERE id=?",
             [$expira, $paymentId, $id]
+        );
+
+        for ($i = 1; $i < $quantidade; $i++) {
+            $this->db->execute(
+                "INSERT INTO licencas
+                    (chave, empresa_id, tipo, quantidade, anos_suporte, status, email, telefone, expira_em, payment_id, criada_em)
+                 VALUES (?, ?, 'anual', 1, ?, 'ativa', ?, ?, ?, ?, NOW())",
+                [$this->gerarChave(), $licenca['empresa_id'], $anosSuporte, $licenca['email'], $licenca['telefone'], $expira, $paymentId]
+            );
+        }
+    }
+
+    /** Todas as licenças (do mesmo pedido em lote) que compartilham um payment_id. */
+    public function findAllByPaymentId(string $paymentId): array {
+        return $this->db->query(
+            "SELECT * FROM licencas WHERE payment_id = ? ORDER BY id ASC",
+            [$paymentId]
         );
     }
 
@@ -221,6 +287,7 @@ class Licenca extends Model {
                 SUM(tipo   = 'vitalicia')                                                                                                              AS vitalicias,
                 SUM(status = 'expirada')                                                                                                               AS expiradas,
                 SUM(status = 'revogada')                                                                                                               AS revogadas,
+                SUM(status = 'pendente')                                                                                                               AS pendentes,
                 SUM(device_id IS NOT NULL AND status IN ('ativa','trial'))                                                                             AS dispositivos_ativos,
                 SUM(tipo != 'vitalicia' AND expira_em IS NOT NULL AND expira_em BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) AND status='ativa') AS expirando_7d
             FROM licencas
@@ -236,5 +303,27 @@ class Licenca extends Model {
              ORDER BY h.criado_em DESC",
             [$licencaId]
         );
+    }
+
+    /** Licença por id, já com o nome da empresa. */
+    public function findByIdComEmpresa(int $id): ?array {
+        return $this->db->queryOne(
+            "SELECT l.*, e.nome AS empresa_nome
+             FROM licencas l LEFT JOIN empresas e ON e.id = l.empresa_id
+             WHERE l.id = ?",
+            [$id]
+        );
+    }
+
+    /** Licenças atribuíveis: utilizáveis e ainda não vinculadas a um dispositivo. */
+    public function disponiveis(): array {
+        return $this->db->query("
+            SELECT l.id, l.chave, l.tipo, l.status, l.empresa_id, e.nome AS empresa_nome, l.expira_em
+            FROM licencas l
+            LEFT JOIN empresas e ON e.id = l.empresa_id
+            WHERE (l.device_id IS NULL OR l.device_id = '')
+              AND l.status IN ('ativa','trial')
+            ORDER BY e.nome, l.criada_em DESC
+        ");
     }
 }

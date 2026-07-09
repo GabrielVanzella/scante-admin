@@ -39,9 +39,13 @@ CREATE TABLE licencas (
   chave         VARCHAR(24) NOT NULL UNIQUE,      -- SCTE-XXXXXX-XXXXXX-XXXXXX
   empresa_id    INT UNSIGNED NULL,
   tipo          ENUM('trial','mensal','anual','vitalicia') NOT NULL DEFAULT 'trial',
+  quantidade    INT UNSIGNED NOT NULL DEFAULT 1,  -- nº de licenças do mesmo pedido (checkout em lote)
+  anos_suporte  TINYINT UNSIGNED NULL,            -- anos de suporte escolhidos no checkout em lote
   status        ENUM('trial','ativa','expirada','revogada','pendente') NOT NULL DEFAULT 'trial',
   device_id     VARCHAR(100) NULL,
   device_nome   VARCHAR(200) NULL,
+  email         VARCHAR(150) NULL,
+  telefone      VARCHAR(30) NULL,
   vinculada_em  DATETIME NULL,
   ultimo_acesso DATETIME NULL,
   expira_em     DATETIME NULL,                    -- NULL = vitalícia
@@ -51,7 +55,8 @@ CREATE TABLE licencas (
   INDEX idx_chave (chave),
   INDEX idx_device (device_id),
   INDEX idx_status (status),
-  INDEX idx_expira (expira_em)
+  INDEX idx_expira (expira_em),
+  INDEX idx_payment (payment_id)
 ) ENGINE=InnoDB;
 
 -- Histórico de dispositivos (vincular / transferência)

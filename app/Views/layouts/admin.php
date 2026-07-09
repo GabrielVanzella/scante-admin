@@ -21,6 +21,7 @@
   .badge-trial    { background:#fef3c7; color:#92400e; }
   .badge-expirada { background:#fee2e2; color:#991b1b; }
   .badge-revogada { background:#f3f4f6; color:#6b7280; }
+  .badge-pendente { background:#dbeafe; color:#1e40af; }
   .card { border:none; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
   .stat-card { padding:20px; }
   .stat-card .value { font-size:2rem; font-weight:700; color:var(--primary); }

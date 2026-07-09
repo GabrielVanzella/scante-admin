@@ -20,13 +20,16 @@ class MercadoPagoService {
         float  $valor,
         string $email,
         string $deviceNome,
-        string $appUrl
+        string $appUrl,
+        int    $quantidade = 1
     ): string {
         $body = [
             'items' => [[
-                'title'      => 'ScanTE — Licença ' . ucfirst($tipo),
-                'quantity'   => 1,
-                'unit_price' => (float)$valor,
+                'title'      => $quantidade > 1
+                    ? "ScanTE — Suporte {$tipo} ({$quantidade}x)"
+                    : 'ScanTE — Licença ' . ucfirst($tipo),
+                'quantity'   => $quantidade,
+                'unit_price' => (float)$valor / $quantidade,
                 'currency_id' => 'BRL',
             ]],
             'payer'              => ['email' => $email],
@@ -65,11 +68,14 @@ class MercadoPagoService {
         float  $valor,
         string $email,
         array  $formData,
-        string $appUrl
+        string $appUrl,
+        int    $quantidade = 1
     ): array {
         $extra = [
             'transaction_amount'  => $valor,
-            'description'         => 'ScanTE — Licença ' . ucfirst($tipo),
+            'description'         => $quantidade > 1
+                ? "ScanTE — Suporte {$tipo} ({$quantidade}x)"
+                : 'ScanTE — Licença ' . ucfirst($tipo),
             'external_reference'  => (string)$licencaId,
             'statement_descriptor' => 'ScanTE',
         ];

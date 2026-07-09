@@ -54,6 +54,27 @@ class LicencasController extends Controller {
         ], 'admin');
     }
 
+    /** Aprova uma solicitação/compra do checkout em lote: só aqui as chaves
+     *  passam a valer de fato — ativa a licença mestre e gera as demais da
+     *  mesma quantidade (ver Licenca::aprovar). */
+    public function aprovar(string $id): void {
+        Auth::requireAdmin();
+        $model   = new Licenca();
+        $licenca = $model->findById((int)$id);
+
+        if (!$licenca || $licenca['status'] !== 'pendente') {
+            $this->flash('warning', 'Essa solicitação já foi processada ou não existe mais.');
+            $this->redirect('/admin/licencas/' . $id);
+            return;
+        }
+
+        $model->aprovar((int)$id);
+
+        $qtd = max(1, (int)$licenca['quantidade']);
+        $this->flash('success', "Solicitação aprovada! $qtd licença(s) gerada(s).");
+        $this->redirect('/admin/licencas/' . $id);
+    }
+
     public function revogar(string $id): void {
         Auth::requireAdmin();
         (new Licenca())->revogar((int)$id);

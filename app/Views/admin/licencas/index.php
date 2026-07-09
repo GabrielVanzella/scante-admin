@@ -38,6 +38,14 @@
     </div>
   </div>
   <div class="col-6 col-md-4 col-xl-2">
+    <div class="card text-center h-100 border-primary">
+      <div class="card-body py-3">
+        <div class="fs-4 fw-bold text-primary"><?= (int)($stats['pendentes'] ?? 0) ?></div>
+        <div class="small text-muted">Solicitações pendentes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl-2">
     <div class="card text-center h-100 border-danger">
       <div class="card-body py-3">
         <div class="fs-4 fw-bold text-danger"><?= (int)($stats['expirando_7d'] ?? 0) ?></div>
@@ -84,6 +92,7 @@
         <label class="form-label form-label-sm mb-1 text-muted">Status</label>
         <select id="filtroStatus" class="form-select form-select-sm">
           <option value="">Todos</option>
+          <option value="pendente">Pendente (aguardando aprovação)</option>
           <option value="ativa">Ativa</option>
           <option value="trial">Trial</option>
           <option value="expirada">Expirada</option>
@@ -169,7 +178,12 @@
             <td><code class="chave-cell"><?= $l['chave'] ?></code></td>
             <td><?= htmlspecialchars($l['empresa_nome'] ?? '—') ?></td>
             <td><?= ucfirst($l['tipo']) ?></td>
-            <td><span class="badge badge-<?= $l['status'] ?>"><?= ucfirst($l['status']) ?></span></td>
+            <td>
+              <span class="badge badge-<?= $l['status'] ?>"><?= ucfirst($l['status']) ?></span>
+              <?php if ($l['status'] === 'pendente' && !empty($l['payment_id'])): ?>
+                <span class="badge bg-success" title="Pagamento confirmado, aguardando aprovação"><i class="bi bi-credit-card"></i> Pago</span>
+              <?php endif; ?>
+            </td>
             <td>
               <?php if ($l['device_id']): ?>
                 <i class="bi bi-phone-fill text-success"></i>
@@ -191,7 +205,14 @@
               <?php endif; ?>
             </td>
             <td><?= $l['ultimo_acesso'] ? date('d/m/Y H:i', strtotime($l['ultimo_acesso'])) : '—' ?></td>
-            <td>
+            <td class="d-flex gap-1">
+              <?php if ($l['status'] === 'pendente'): ?>
+              <form method="POST" action="<?= APP_URL ?>/admin/licencas/<?= $l['id'] ?>/aprovar">
+                <button type="submit" class="btn btn-sm btn-primary">
+                  <i class="bi bi-check-lg me-1"></i>Aprovar<?= (int)$l['quantidade'] > 1 ? ' (' . (int)$l['quantidade'] . ')' : '' ?>
+                </button>
+              </form>
+              <?php endif; ?>
               <a href="<?= APP_URL ?>/admin/licencas/<?= $l['id'] ?>" class="btn btn-sm btn-outline-secondary">
                 <i class="bi bi-eye"></i>
               </a>

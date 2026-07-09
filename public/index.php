@@ -56,6 +56,7 @@ $router->get( '/admin/pagamentos/{id}/excluir',     'Admin/PagamentosController'
 $router->get( '/admin/licencas',                    'Admin/LicencasController',  'index');
 $router->post('/admin/licencas/gerar',              'Admin/LicencasController',  'gerar');
 $router->get( '/admin/licencas/{id}',               'Admin/LicencasController',  'ver');
+$router->post('/admin/licencas/{id}/aprovar',       'Admin/LicencasController',  'aprovar');
 $router->post('/admin/licencas/{id}/revogar',       'Admin/LicencasController',  'revogar');
 $router->post('/admin/licencas/{id}/reativar',      'Admin/LicencasController',  'reativar');
 $router->post('/admin/licencas/{id}/estender',      'Admin/LicencasController',  'estender');
@@ -75,7 +76,10 @@ $router->post('/api/webhook/pagarme',              'Api/PagarmeWebhookController
 $router->post('/api/dispositivo/ping',              'Api/DispositivoController',  'ping');
 
 // Admin — Dispositivos
-$router->get( '/admin/dispositivos',                'Admin/DispositivosController', 'index');
+$router->get( '/admin/dispositivos',                     'Admin/DispositivosController', 'index');
+$router->post('/admin/dispositivos/atribuir-empresa',    'Admin/DispositivosController', 'atribuirEmpresa');
+$router->post('/admin/dispositivos/atribuir-licenca',    'Admin/DispositivosController', 'atribuirLicenca');
+$router->post('/admin/dispositivos/excluir',             'Admin/DispositivosController', 'excluir');
 
 // Redirecionar raiz para login
 $router->get('/', 'AuthController', 'login');

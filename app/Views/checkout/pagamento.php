@@ -1,18 +1,9 @@
 <?php
-$icones = ['mensal' => 'bi-calendar-month', 'anual' => 'bi-calendar-check', 'vitalicia' => 'bi-infinity'];
-$icone  = $icones[$tipo] ?? 'bi-key';
-
-$beneficios = [
-    'mensal'    => ['30 dias de acesso', 'Suporte por e-mail', 'Atualizações incluídas'],
-    'anual'     => ['365 dias de acesso', 'Suporte prioritário', 'Atualizações incluídas', 'Economia de 44%'],
-    'vitalicia' => ['Acesso vitalício', 'Suporte prioritário', 'Atualizações futuras', 'Pague uma vez'],
-];
-$listaBeneficios = $beneficios[$tipo] ?? [];
 $valorFmt        = 'R$ ' . number_format($valor, 2, ',', '.');
 $temPix          = !empty($pixData['qr_code']);
 $statusUrl       = APP_URL . '/checkout/status?id=' . $licencaId . '&h=' . urlencode($token);
 $processarUrl    = APP_URL . '/checkout/processar-pagamento';
-$sucessoUrl      = APP_URL . '/checkout/sucesso';
+$sucessoUrl      = APP_URL . '/checkout/sucesso?id=' . $licencaId . '&h=' . urlencode($token);
 ?>
 
 <!-- SDK Mercado Pago (só carrega se for MP com chave pública) -->
@@ -43,28 +34,17 @@ $sucessoUrl      = APP_URL . '/checkout/sucesso';
       <div class="pg-col-left">
         <div class="summary-card">
           <div class="summary-product">
-            <div class="summary-icon"><i class="bi <?= $icone ?>"></i></div>
+            <div class="summary-icon"><i class="bi bi-key"></i></div>
             <div>
-              <div class="fw-bold fs-6">ScanTE — Licença <?= htmlspecialchars($label) ?></div>
-              <div class="text-muted" style="font-size:.82rem"><?= $dias ? $dias . ' dias de acesso' : 'Acesso permanente' ?></div>
+              <div class="fw-bold fs-6"><?= htmlspecialchars($descricao) ?></div>
+              <div class="text-muted" style="font-size:.82rem"><?= $anosSuporte * 365 ?> dias de acesso por licença</div>
             </div>
           </div>
 
           <ul class="summary-benefits">
-            <?php foreach ($listaBeneficios as $b): ?>
-            <li><i class="bi bi-check-circle-fill"></i><?= htmlspecialchars($b) ?></li>
-            <?php endforeach; ?>
+            <li><i class="bi bi-check-circle-fill"></i><?= $quantidade ?> licença<?= $quantidade > 1 ? 's' : '' ?></li>
+            <li><i class="bi bi-check-circle-fill"></i><?= $anosSuporte ?> ano<?= $anosSuporte > 1 ? 's' : '' ?> de suporte cada</li>
           </ul>
-
-          <?php if (!empty($licenca['device_nome']) || !empty($licenca['device_id'])): ?>
-          <div class="summary-device">
-            <i class="bi bi-phone-fill"></i>
-            <div>
-              <div><?= htmlspecialchars($licenca['device_nome'] ?: 'Dispositivo') ?></div>
-              <code><?= htmlspecialchars($licenca['device_id'] ?? '') ?></code>
-            </div>
-          </div>
-          <?php endif; ?>
 
           <div class="summary-total">
             <span class="text-muted">Total a pagar</span>
@@ -104,7 +84,7 @@ $sucessoUrl      = APP_URL . '/checkout/sucesso';
           </div>
           <div class="pay-review">
             <div class="pr-row"><span>E-mail</span><strong><?= htmlspecialchars($licenca['email'] ?? '—') ?></strong></div>
-            <div class="pr-row"><span>Plano</span><strong>Licença <?= htmlspecialchars($label) ?></strong></div>
+            <div class="pr-row"><span>Plano</span><strong><?= htmlspecialchars($descricao) ?></strong></div>
             <div class="pr-row total"><span>Total</span><strong><?= $valorFmt ?></strong></div>
           </div>
           <form method="POST" action="<?= APP_URL ?>/checkout/pagar">
@@ -360,7 +340,7 @@ if (TEM_PIX) {
   const poll = setInterval(async () => {
     try {
       const d = await (await fetch(STATUS_URL)).json();
-      if (d.status === 'ativa') {
+      if (d.pago || d.status === 'ativa') {
         clearInterval(poll);
         if (countdownTimer) clearInterval(countdownTimer);
         document.getElementById('qrPaid').classList.remove('d-none');
@@ -416,7 +396,7 @@ function mostrarPixQr(data) {
     try {
       const r = await fetch(STATUS_URL);
       const d = await r.json();
-      if (d.status === 'ativa') {
+      if (d.pago || d.status === 'ativa') {
         clearInterval(pixPollInterval);
         clearInterval(pixCountdownInterval);
         document.getElementById('pixPaid').classList.remove('d-none');

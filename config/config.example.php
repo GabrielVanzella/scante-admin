@@ -33,3 +33,6 @@ define('PRECO_VITALICIA', 499.90);
 
 // Trial do app (dias)
 define('TRIAL_DIAS', 7);
+
+// E-mail remetente usado no cabeçalho "From" dos e-mails do sistema
+define('MAIL_FROM', 'noreply@scante.com.br');

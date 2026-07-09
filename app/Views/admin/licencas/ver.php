@@ -23,6 +23,14 @@
           <dd><span class="badge badge-<?= $licenca['status'] ?> fs-6"><?= ucfirst($licenca['status']) ?></span></dd>
           <dt class="text-muted">Tipo</dt>
           <dd><?= ucfirst($licenca['tipo']) ?></dd>
+          <?php if ((int)($licenca['quantidade'] ?? 1) > 1 || !empty($licenca['anos_suporte'])): ?>
+          <dt class="text-muted">Pedido em lote</dt>
+          <dd><?= (int)$licenca['quantidade'] ?> licença(s) × <?= (int)$licenca['anos_suporte'] ?> ano(s) de suporte</dd>
+          <?php endif; ?>
+          <?php if (!empty($licenca['email'])): ?>
+          <dt class="text-muted">Contato</dt>
+          <dd><?= htmlspecialchars($licenca['email']) ?><?= !empty($licenca['telefone']) ? ' · ' . htmlspecialchars($licenca['telefone']) : '' ?></dd>
+          <?php endif; ?>
           <dt class="text-muted">Criada em</dt>
           <dd><?= date('d/m/Y H:i', strtotime($licenca['criada_em'])) ?></dd>
           <?php if ($licenca['tipo'] !== 'vitalicia'): ?>
@@ -82,17 +90,25 @@
       <div class="card-body">
         <h6 class="fw-bold mb-3"><i class="bi bi-gear me-2"></i>Ações</h6>
         <div class="d-grid gap-2">
-          <?php if ($licenca['status'] !== 'revogada'): ?>
-            <button class="btn btn-outline-danger btn-sm"
-              data-bs-toggle="modal" data-bs-target="#modalRevogar">
-              <i class="bi bi-x-circle me-1"></i>Revogar licença
-            </button>
-          <?php else: ?>
+          <?php if ($licenca['status'] === 'pendente'): ?>
+            <form method="POST" action="<?= APP_URL ?>/admin/licencas/<?= $licenca['id'] ?>/aprovar">
+              <button type="submit" class="btn btn-primary btn-sm w-100">
+                <i class="bi bi-check-lg me-1"></i>Aprovar solicitação
+                <?= (int)$licenca['quantidade'] > 1 ? ' (' . (int)$licenca['quantidade'] . ' licenças)' : '' ?>
+              </button>
+            </form>
+          <?php endif; ?>
+          <?php if ($licenca['status'] === 'revogada'): ?>
             <form method="POST" action="<?= APP_URL ?>/admin/licencas/<?= $licenca['id'] ?>/reativar">
               <button type="submit" class="btn btn-outline-success btn-sm w-100">
                 <i class="bi bi-check-circle me-1"></i>Reativar licença
               </button>
             </form>
+          <?php elseif ($licenca['status'] !== 'pendente'): ?>
+            <button class="btn btn-outline-danger btn-sm"
+              data-bs-toggle="modal" data-bs-target="#modalRevogar">
+              <i class="bi bi-x-circle me-1"></i>Revogar licença
+            </button>
           <?php endif; ?>
 
           <?php if ($licenca['tipo'] !== 'vitalicia'): ?>

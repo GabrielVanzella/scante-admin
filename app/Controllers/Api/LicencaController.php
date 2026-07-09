@@ -75,8 +75,9 @@ class LicencaController extends Controller {
             $licenca = $model->findById((int)$licencaId);
 
             if ($licenca && $licenca['status'] === 'pendente') {
-                // Licença criada pelo checkout: ativa pelo tipo
-                $model->ativarAposPagamento((int)$licencaId, $tipo, $payId);
+                // Licença criada pelo checkout: registra o pagamento (fica
+                // aguardando aprovação manual no admin, ver Licenca::aprovar)
+                $model->registrarPagamento((int)$licencaId, $payId);
             } else {
                 // Licença existente: apenas estende
                 $model->estender((int)$licencaId, $dias);

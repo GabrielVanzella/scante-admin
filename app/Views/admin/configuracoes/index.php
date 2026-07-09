@@ -128,6 +128,35 @@ $gatewayAtivo = $cfg['gateway_ativo'] ?? 'dev';
     </div>
   </div>
 
+  <!-- Preço por ano de suporte -->
+  <div class="card mb-3">
+    <div class="card-header fw-semibold"><i class="bi bi-tag me-2"></i>Preço do checkout em lote</div>
+    <div class="card-body">
+      <p class="text-muted small mb-3">
+        Valor cobrado por <strong>ano de suporte, por licença</strong>, no checkout público de compra em lote
+        (<code><?= APP_URL ?>/checkout</code>). Total = preço × anos × quantidade, sem desconto por volume.
+      </p>
+      <label class="form-label fw-semibold">Preço por ano (R$)</label>
+      <input type="text" name="preco_ano_suporte" class="form-control" style="max-width:200px"
+             value="<?= htmlspecialchars($cfg['preco_ano_suporte'] ?? '') ?>" placeholder="199,90">
+    </div>
+  </div>
+
+  <!-- Notificação de novas solicitações -->
+  <div class="card mb-3">
+    <div class="card-header fw-semibold"><i class="bi bi-envelope me-2"></i>Notificação de novas solicitações</div>
+    <div class="card-body">
+      <p class="text-muted small mb-3">
+        Quando um cliente termina o checkout em lote, ele não paga direto — vira uma <strong>solicitação
+        pendente</strong> em <a href="<?= APP_URL ?>/admin/licencas">Licenças</a> aguardando sua aprovação.
+        Esse e-mail avisa que chegou um pedido novo.
+      </p>
+      <label class="form-label fw-semibold">E-mail para receber os avisos</label>
+      <input type="email" name="email_notificacoes" class="form-control" style="max-width:320px"
+             value="<?= htmlspecialchars($cfg['email_notificacoes'] ?? '') ?>" placeholder="contato@scante.com.br">
+    </div>
+  </div>
+
   <!-- Pagar.me -->
   <div class="card mb-3" id="secaoPagarme" style="<?= $gatewayAtivo !== 'pagarme' ? 'opacity:.6' : '' ?>">
     <div class="card-header d-flex align-items-center justify-content-between">

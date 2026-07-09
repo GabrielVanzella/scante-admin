@@ -49,8 +49,9 @@ class PagarmeWebhookController extends Controller {
         $valor    = $this->precos[$tipo] ?? PRECO_MENSAL;
 
         if ($licenca['status'] === 'pendente') {
-            // Licença criada pelo checkout: ativa agora
-            $model->ativarAposPagamento($licencaId, $tipo, $chargeId);
+            // Licença criada pelo checkout: registra o pagamento (fica
+            // aguardando aprovação manual no admin, ver Licenca::aprovar)
+            $model->registrarPagamento($licencaId, $chargeId);
         }
         // Já ativa? Ignora (webhook pode ser chamado mais de uma vez)
 

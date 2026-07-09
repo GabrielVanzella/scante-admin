@@ -14,6 +14,8 @@ class ConfiguracoesController extends Controller {
         'mp_access_token',
         'mp_public_key',
         'mp_webhook_secret',
+        'preco_ano_suporte',
+        'email_notificacoes',
     ];
 
     public function index(): void {
@@ -21,6 +23,12 @@ class ConfiguracoesController extends Controller {
 
         $cfg    = new Configuracao();
         $dados  = $cfg->getMultiple($this->chaves);
+        if (empty($dados['preco_ano_suporte'])) {
+            $dados['preco_ano_suporte'] = (string)PRECO_ANUAL;
+        }
+        if (empty($dados['email_notificacoes'])) {
+            $dados['email_notificacoes'] = 'scante@scante.com.br';
+        }
         $status = $this->detectarStatus($dados);
 
         $this->view('admin.configuracoes.index', [
@@ -41,6 +49,15 @@ class ConfiguracoesController extends Controller {
             $gateway = 'dev';
         }
         $cfg->set('gateway_ativo', $gateway);
+
+        // Preço por ano de suporte (checkout em lote)
+        $precoAno = (float)str_replace(',', '.', (string)$this->input('preco_ano_suporte', ''));
+        if ($precoAno > 0) {
+            $cfg->set('preco_ano_suporte', (string)$precoAno);
+        }
+
+        // E-mail que recebe aviso de novas solicitações de licenças
+        $this->salvarSePreenchido($cfg, 'email_notificacoes');
 
         // Pagar.me — só atualiza se o campo não estiver em branco
         $this->salvarSePreenchido($cfg, 'pagarme_secret_key');
