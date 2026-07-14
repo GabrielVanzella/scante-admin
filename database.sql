@@ -110,6 +110,22 @@ CREATE TABLE dispositivos (
   INDEX idx_ultimo_acesso (ultimo_acesso)
 ) ENGINE=InnoDB;
 
+-- Licenças do ScanTE Relay (offline, assinadas com Ed25519 — ver RelayLicenseService)
+CREATE TABLE relay_licencas (
+  id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  cliente           VARCHAR(200) NOT NULL,
+  serial            VARCHAR(50) NOT NULL UNIQUE,
+  max_sessions      INT UNSIGNED NOT NULL DEFAULT 0,
+  max_devices       INT UNSIGNED NOT NULL DEFAULT 0,
+  expira_em         DATE NOT NULL,
+  release_suportado VARCHAR(20) NULL,
+  server_host       VARCHAR(100) NULL,
+  licenca_texto     TEXT NOT NULL,
+  criado_por        INT UNSIGNED NULL,
+  criada_em         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (criado_por) REFERENCES usuarios(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 -- ============================================================
 -- Usuário admin padrão
 -- Senha: admin123 (ALTERE após o primeiro login!)

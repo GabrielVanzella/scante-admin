@@ -36,3 +36,8 @@ define('TRIAL_DIAS', 7);
 
 // E-mail remetente usado no cabeçalho "From" dos e-mails do sistema
 define('MAIL_FROM', 'noreply@scante.com.br');
+
+// Chave PRIVADA (Ed25519, base64) usada para assinar as licenças do ScanTE Relay.
+// Gere a sua com: php -r "$kp=sodium_crypto_sign_keypair(); echo base64_encode(sodium_crypto_sign_secretkey($kp));"
+// A chave PÚBLICA correspondente precisa ser embutida em scante-relay/license.go.
+define('RELAY_LICENSE_PRIVATE_KEY', 'GERE_A_SUA_CHAVE_PRIVADA_AQUI');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ScanTE — Ativar Licença</title>
+<title>ScanTE — Comprar Licenças</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 <style>
@@ -34,7 +34,7 @@
 <div class="checkout-wrap">
   <div class="checkout-brand">
     <div class="logo">Scan<span>TE</span></div>
-    <p>Ative sua licença e continue usando sem limites</p>
+    <p>Compre licenças ScanTE para sua equipe</p>
   </div>
   <?= $content ?>
   <div class="text-center mt-4" style="color:rgba(255,255,255,.35);font-size:.75rem">

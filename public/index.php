@@ -26,6 +26,9 @@ $router->get('/login',  'AuthController', 'login');
 $router->post('/login', 'AuthController', 'login');
 $router->get('/logout', 'AuthController', 'logout');
 
+// Página pública de download do ScanTE Relay
+$router->get('/scan-relay', 'RelayDownloadController', 'index');
+
 // Checkout público (sem autenticação)
 $router->get( '/checkout',           'CheckoutController', 'index');
 $router->post('/checkout',           'CheckoutController', 'processar');
@@ -74,6 +77,11 @@ $router->post('/api/licenca/validar',               'Api/LicencaController',    
 $router->post('/api/webhook/mercadopago',           'Api/LicencaController',         'webhookMercadoPago');
 $router->post('/api/webhook/pagarme',              'Api/PagarmeWebhookController',  'handle');
 $router->post('/api/dispositivo/ping',              'Api/DispositivoController',  'ping');
+
+// Admin — Licenças do ScanTE Relay
+$router->get( '/admin/relay-licencas',              'Admin/RelayLicencasController', 'index');
+$router->post('/admin/relay-licencas/gerar',         'Admin/RelayLicencasController', 'gerar');
+$router->get( '/admin/relay-licencas/{id}/baixar',   'Admin/RelayLicencasController', 'baixar');
 
 // Admin — Dispositivos
 $router->get( '/admin/dispositivos',                     'Admin/DispositivosController', 'index');
